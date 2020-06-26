@@ -1,7 +1,3 @@
----
-
----
-
 # Timed Internet Manager for EdgeRouter (TIMER)
 
 This application lets you control Internet access schedules for devices on your network by hiding the firewall rule complexity behind an easy to use web interface. I wrote it primarily for my wife so she could easily modify the schedules as needed, or grant temporary access upon request (*"mom, I have a Zoom meeting with friends, may I have more Internet time please?"*) The responsive interface works well on both desktop and mobile browsers.
