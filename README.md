@@ -56,12 +56,12 @@ In `timer.py`, set the following variables:
 ruleset  = 'WAN_OUT'
 
 # DHCP server used by the clients you want to block or allow
-dhcpSrv  = 'kids'
+dhcpSrv  = 'Kids'
 
 # router admin credentials
 # if empty, the existing EdgeRouter session will be used
-username  = ''
-password  = ''
+username  = 'timer'
+password  = 'strongpassword'
 ```
 
 ### Copy the files
@@ -127,7 +127,7 @@ Navigate to `https://youredgerouter/timer`, and you'll see something like this:
 
 \- But I definitely have many more devices on my WiFi. Where are they?
 
-\- TIMER doesn't know them *by name* and does not display unnamed devices by default. Click on **advanced** to reveal all current leases with the corresponding MAC and IP addresses:
+\- TIMER doesn't know them *by name* and does not display unnamed devices by default. Click **advanced** to reveal all current leases with the corresponding MAC and IP addresses:
 
 ![](images/2-advanced.png)
 
@@ -145,7 +145,7 @@ You can use `*` for **unlimited** access, or leave the schedule empty for **no**
 
 ![](images/4-schedules.png)
 
-\- I pushed save and Liesl's phone and Louisa's watch disappeared from the list
+\- I pushed **save** but Liesl's phone and Louisa's watch disappeared from the list
 
 ![](images/5-schedule-saved.png)
 

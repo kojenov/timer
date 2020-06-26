@@ -33,7 +33,7 @@ numStart = 8000
 numEnd   = 8999
 
 # DHCP server used by the clients you want to block or allow
-dhcpSrv  = '...'
+dhcpSrv  = 'Kids'
 
 # the EdgeMAX GUI server
 # - should always be https://localhost
@@ -42,8 +42,8 @@ server   = 'https://localhost'
 
 # router admin credentials
 # if empty, the existing EdgeRouter session will be used
-username = ''
-password = ''
+username = 'timer'
+password = 'strongpassword'
 
 
 #
