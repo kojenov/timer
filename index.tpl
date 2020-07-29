@@ -125,7 +125,7 @@
           <div class="column is-one-third is-hidden" name="tempBlock">
             <div class="select is-danger">
               <select name="temp">
-                %for opt in [['',''], ['15',':15'], ['30',':30'], ['60','1'], ['120','2'], ['240','4'], ['480', '8'], ['1440','24']]:
+                %for opt in [['',''], ['15',':15'], ['30',':30'], ['45',':45'], ['60','1'], ['90','1.5'], ['120','2'], ['240','4'], ['480', '8'], ['1440','24']]:
                   %if client['temp'] == opt[0]:
                     %selected = 'selected'
                   %else:
