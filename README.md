@@ -14,14 +14,19 @@ I recommend you back up your EdgeRouter configuration before proceeding. Althoug
 
 Create a separate VLAN with DHCP server for the devices you want to control. In my setup, I have these:
 
-* local network (non-VLAN): switch0, 10.7.0.1/24
+* local network (non-VLAN): switch0, 10.7.7.1/24
   * DHCP server: LAN
 * kids network (VLAN 8): switch0.8, 10.7.8.1/24
   * DHCP server: kids
 
+![](images/01-networks.png)
+
+
 ### Create separate wireless network
 
-In UniFi controller, create a separate SSID with VLAN tagging. In my setup, I have `kids` SSID with VLAN 8.
+In UniFi controller, create a separate SSID with VLAN tagging. In my setup, I have `kids` with VLAN 8.
+
+![](images/02-ssid.png)
 
 ### Create firewall ruleset for outgoing Internet packets
 
@@ -30,7 +35,12 @@ I call mine `WAN_OUT`, and it is set up as follows:
 * default action: accept
 * interface: eth0, direction: out
 
-By default, this ruleset allows all outgoing packets to the Internet. The app will add rules to:
+![](images/03-wan_out-1.png)
+
+![](images/03-wan_out-2.png)
+
+
+By default, this ruleset allows all outgoing packets to the Internet. The TIMER will add rules to:
 
 1. Allow specific MAC addresses to send packets to the Internet
 2. Block all other devices on the specified VLAN
@@ -177,4 +187,4 @@ Feel free to examine each rule.
 
 ## Future plans
 
-¯\\\_(ツ)\_/¯
+1. Add OUI lookup like [this one](https://www.wireshark.org/tools/oui-lookup.html)
