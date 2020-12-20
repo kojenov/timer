@@ -9,7 +9,7 @@
 from __future__ import print_function
 
 import bottle
-from bottle import route, template, request, redirect
+from bottle import route, template, request, response, redirect
 
 import argparse, json, re, os, subprocess, time, logging
 from os import path
@@ -163,7 +163,7 @@ def batch(data):
   response = opener.open(request)
   result   = json.load(response)
 
-  log.debug('%s execution: %d seconds' % (data.keys()[0],round(time.time()-stamp)) )
+  #log.debug('%s execution: %d seconds' % (data.keys()[0],round(time.time()-stamp)) )
 
   return result
 
@@ -222,7 +222,7 @@ def loadState():
 
     state[mac]['rules'].append(num)
     
-  log.debug(pretty('loadState() returns', state))
+  #log.debug(pretty('loadState() returns', state))
   return state
 
 
@@ -374,7 +374,7 @@ def stateToRules(state, available):
       'source'      : { 'address' : subnet.keys()[0] }
     }
 
-  log.debug(pretty('stateToRules()', rules))
+  #log.debug(pretty('stateToRules()', rules))
   return rules
 
 
@@ -383,7 +383,7 @@ def stateToRules(state, available):
 #
 def saveRules(changed):
   
-  log.debug(pretty('saveRules():', changed))
+  #log.debug(pretty('saveRules():', changed))
 
   # load the existing firewall rules
   rules = loadRules()
@@ -455,9 +455,15 @@ def index():
 
   state = loadState()
   addDHCP(state)
-
   logout()
 
+  if request.get_cookie('saved'):
+    # delete the cookie
+    response.set_cookie('saved', 'no', max_age=0, secure=True)
+    # render the page with "saved successfully" message
+    return template('index', oldState=json.dumps(state), state=sortState(state), errors=[])
+    
+  # render the page with no messages
   return template('index', oldState=json.dumps(state), state=sortState(state), errors=None)
 
 
@@ -509,12 +515,13 @@ def submit():
       if message:
         return template('error', title = 'login error', message = message)
 
+      # everything is good
       saveRules(changed)
-      new = loadState()
-      addDHCP(new)
-      old = new
-
       logout()
+      
+      # redirect to GET
+      response.set_cookie('saved', 'yes', secure=True)
+      redirect('/timer')
 
   else:
     errors.append('no changes')
