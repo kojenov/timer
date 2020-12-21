@@ -23,6 +23,19 @@
     .timer-padding {
       padding: 0.5rem !important;
     }
+    #overlay {
+      display: none;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.6);
+      z-index: 2;
+      text-align: center;
+      padding: 50px;
+      color: white;
+      font-size: 2em;
+    }
+
   </style>
 </head>
 
@@ -74,9 +87,15 @@
         elements[i].classList.remove("is-hidden");
       }
     }
+    
+    function save() {
+      document.getElementById("overlay").style.display = "block";
+    }
 
   </script>
 
+  <div id="overlay">saving...</div>
+  
   %try:
     %if errors != None and not errors:
       <article class="message is-success">
@@ -154,7 +173,7 @@
     %end
   
     <div class="box has-text-centered">
-      <input class="button is-link" type="submit" value="save">
+      <input class="button is-link" type="submit" value="save" onclick="save()">
     </div>
   
   </form>
