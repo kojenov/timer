@@ -163,7 +163,7 @@ def batch(data):
   response = opener.open(request)
   result   = json.load(response)
 
-  #log.debug('%s execution: %d seconds' % (data.keys()[0],round(time.time()-stamp)) )
+  log.debug('%s execution: %d seconds' % (data.keys()[0],round(time.time()-stamp)) )
 
   return result
 
@@ -187,17 +187,23 @@ def loadRules():
 #
 def loadState():
 
-  state = {}
+  enabled = True
+  state   = {}
   
   for num, rule in loadRules().items():
+    #log.debug(num + ': rule: ' + json.dumps(rule))
     
     # parse the description
     prefix, name, sched = rule['description'].split('|')
     
     if prefix != 'timer':
-      debug.log('invalid prefix, this should not happen: %s' % rule['description'])
+      log.debug('invalid prefix, this should not happen: %s' % rule['description'])
       continue
     
+    if name == 'disabled' and sched == '*':
+      enabled = False
+      continue
+
     # get the MAC address
     mac = rule['source']['mac-address']
     
@@ -205,9 +211,10 @@ def loadState():
       if sched and sched != 'temp':
         # append to the existing schedule
         sched1 = state[mac]['sched'].split()
-        sched1.append(sched)
-        sched1.sort(key=lambda time: int(time.split('-')[0]))
-        state[mac]['sched'] = ' '.join(sched1)
+        if sched not in sched1:
+          sched1.append(sched)
+          sched1.sort(key=lambda time: int(time.split('-')[0]))
+          state[mac]['sched'] = ' '.join(sched1)
 
     else:
       state[mac] = {
@@ -222,8 +229,9 @@ def loadState():
 
     state[mac]['rules'].append(num)
     
-  #log.debug(pretty('loadState() returns', state))
-  return state
+  log.debug(pretty('loadState() enabled', enabled))
+  #log.debug(pretty('loadState() state', state))
+  return enabled, state
 
 
 #
@@ -280,7 +288,7 @@ def sortLambda(name, mac):
 # generate firewall rules from the state
 # the list of available rule numbers is passed in as a parameter
 #
-def stateToRules(state, available):
+def stateToRules(enabled, state, available):
 
   rules = {}
   i = 0
@@ -366,6 +374,15 @@ def stateToRules(state, available):
   dhcp = batch({'GET':{'service':{'dhcp-server':{'shared-network-name':{dhcpSrv:None}}}}})
   subnet = dhcp['GET']['service']['dhcp-server']['shared-network-name'][dhcpSrv]['subnet']
 
+  # disable TIMER
+  if not enabled:
+    rules[numStart] = {
+        'description' : 'timer|disabled|*',
+        'action'      : 'accept',
+        'log'         : 'disable',
+        'source'      : { 'address' : subnet.keys()[0] }
+      }
+
   # the final rule
   rules[numEnd] = {
       'description' : 'timer|*|*',
@@ -374,39 +391,47 @@ def stateToRules(state, available):
       'source'      : { 'address' : subnet.keys()[0] }
     }
 
-  #log.debug(pretty('stateToRules()', rules))
+  log.debug(pretty('stateToRules()', rules))
   return rules
 
 
 #
 # save new rules, overwriting the old ones
 #
-def saveRules(changed):
+def saveRules(enabled, changed):
   
   #log.debug(pretty('saveRules():', changed))
 
   # load the existing firewall rules
   rules = loadRules()
   
+  toDelete = []
+  
+  if enabled:
+    toDelete += [str(numStart)]
+  
   # delete expired temporary access
-  toDelete = [ num for num,rule in rules.items()
-                   if re.match('^timer\|.*\|temp$', rule['description'])
-                      and datetime.strptime('%s %s' % (rule['time'].get('stopdate'),
-                                                       rule['time'].get('stoptime','00:00:00')),
-                                            '%Y-%m-%d %H:%M:%S') < datetime.now() ]
+  toDelete += [ num for num,rule in rules.items()
+                    if re.match('^timer\|.*\|temp$', rule['description'])
+                       and datetime.strptime('%s %s' % (rule['time'].get('stopdate'),
+                                                        rule['time'].get('stoptime','00:00:00')),
+                                             '%Y-%m-%d %H:%M:%S') < datetime.now() ]
 
   # delete rules for all clients that have changed
   for client in changed.values():
     toDelete += [num for num in client['rules']]
   
+  log.debug(pretty('toDelete:', toDelete))
+  
   # get the list of rule numbers that remain taken
   taken = [ num for num in rules.keys() if num not in toDelete ]
   
   # the list of numbers available for use
-  available = [ str(num) for num in range(numStart,numEnd) if str(num) not in taken ]
+  available = [ str(num) for num in range(numStart+1,numEnd) if str(num) not in taken ]
 
   # convert the internal state to rules
-  rules = stateToRules(changed, available)
+  rules = stateToRules(enabled, changed, available)
+  #return  # aleko
   
   if toDelete:
     batch({'DELETE':{'firewall':{'name':{ruleset:{'rule':toDelete}}}}})
@@ -453,7 +478,7 @@ def index():
   if message:
     return template('error', title = 'login error', message = message)
 
-  state = loadState()
+  enabled, state = loadState()
   addDHCP(state)
   logout()
 
@@ -461,15 +486,26 @@ def index():
     # delete the cookie
     response.set_cookie('saved', 'no', max_age=0, secure=True)
     # render the page with "saved successfully" message
-    return template('index', oldState=json.dumps(state), state=sortState(state), errors=[])
+    return template('index',
+                    enabled=enabled,
+                    oldState=json.dumps(state), state=sortState(state),
+                    errors=[])
     
   # render the page with no messages
-  return template('index', oldState=json.dumps(state), state=sortState(state), errors=None)
+  return template('index',
+                  enabled=enabled,
+                  oldState=json.dumps(state), state=sortState(state),
+                  errors=None)
 
 
 @route('/timer', method='POST')
 def submit():
 
+  oldEnabled = False if request.forms.get('oldEnabled') == 'False' else True
+  enabled    = False if request.forms.get('enabled') is None else True
+  log.debug(pretty('oldEnabled', oldEnabled))
+  log.debug(pretty('enabled', enabled))
+  
   old     = json.loads(request.forms.get('oldState'))
   new     = {}
   changed = {}
@@ -508,7 +544,7 @@ def submit():
     if not schedValidate(new[mac]['sched']):
       errors.append('invalid schedude: ' + new[mac]['sched'])
 
-  if changed:
+  if enabled != oldEnabled or changed:
     if not errors:
       
       message = login(request.get_cookie('beaker.session.id'))
@@ -516,7 +552,7 @@ def submit():
         return template('error', title = 'login error', message = message)
 
       # everything is good
-      saveRules(changed)
+      saveRules(enabled, changed)
       logout()
       
       # redirect to GET
@@ -526,7 +562,10 @@ def submit():
   else:
     errors.append('no changes')
 
-  return template('index', oldState=json.dumps(old), state=sortState(new), errors=errors)
+  return template('index',
+                  enabled=True,
+                  oldState=json.dumps(old), state=sortState(new),
+                  errors=errors)
 
 
 #
@@ -555,4 +594,4 @@ bottle.TEMPLATE_PATH.insert(0, os.path.dirname(__file__))
 if args.light:
   bottle.run(app=app, server='flup', bindAddress=None, debug=args.debug, reloader=args.debug)
 else:
-  run(host='0.0.0.0', port=7143, debug=args.debug, reloader=args.debug)
+  bottle.run(host='0.0.0.0', port=7143, debug=args.debug, reloader=args.debug)

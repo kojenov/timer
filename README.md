@@ -110,20 +110,55 @@ include "/config/scripts/timer/timer.conf"
 ### Restart the web server
 
 Kill the server:
-
-
 ```
 sudo kill -SIGTERM $(cat /var/run/lighttpd.pid)
 ```
+
 Restart the server:
 ```
 sudo /usr/sbin/lighttpd -f /etc/lighttpd/lighttpd.conf
 ```
 
-Or, if you want to run it in **debug mode** in the foreground:
+Or, if you want to run it in the foreground:
 ```
 sudo /usr/sbin/lighttpd -D -f /etc/lighttpd/lighttpd.conf
 ```
+
+## Debug
+
+_Skip this section unless you know what you are doing_
+
+###
+
+Kill the server:
+```
+sudo kill -SIGTERM $(cat /var/run/lighttpd.pid)
+```
+
+Comment out _timer.conf_ in `/etc/lighttpd/lighttpd.conf`:
+
+```
+include "mime.conf"
+include "conf-enabled/10-ssl.conf"
+include "conf-enabled/15-fastcgi-python.conf"
+#include "/config/scripts/timer/timer.conf"
+```
+
+Restart the server (Edge Router web ui):
+```
+sudo /usr/sbin/lighttpd -f /etc/lighttpd/lighttpd.conf
+```
+
+Start the TIMER on the command line:
+```
+home-router:/config/scripts/timer$ ./timer.py -d
+```
+
+Notes:
+
+1. It will be listening on port `7143` (feel free to change it in the code).
+2. You can add new or modify existing `log.debug()` statements.
+
 
 ## Usage
 
